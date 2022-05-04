@@ -1,9 +1,9 @@
+/** @author Paul Koreng */
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.util.Random;
-
-/** @author Jörg Vogt */
 
 public class Channel {
   private static double lossRate = 0.0;

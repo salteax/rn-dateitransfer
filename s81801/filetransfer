@@ -1,13 +1,3 @@
 #!/bin/bash
 
-cd bin
-java FileCopy $1 $2 $3 $4
-cd ..
-
-# Client zu 3333
-
-# cd bin
-# java FileCopy localhost 3333 ../dd1.jpg
-# cd ..
-
-#java -cp bin:s12345/bin FileCopy $1 $2 $3 $4 > /dev/null
+java -cp bin:s81801/bin FileCopy $1 $2 $3 $4 $5

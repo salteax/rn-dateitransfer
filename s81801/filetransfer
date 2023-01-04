@@ -7,7 +7,7 @@ if [ "$1" != "server" ] && [ "$1" != "client" ];
 then
     echo "Usage:"
     echo "Server: $0 server <port> [<loss rate> <delay>]"
-    echo "Client: $0 client <ipadress/hostname> <port> <filepath>"
+    echo "Client: $0 client <ipadress/hostname> <port> <filepath> <protocol>"
     exit 1
 fi
 
@@ -20,7 +20,7 @@ fi
 # usage of client
 if [ "$1" = "client" ];
 then
-    java -cp $(dirname "$0")/bin Client $2 $3 $4
+    java -cp $(dirname "$0")/bin Client $2 $3 $4 $5
 fi
 
 exit $?;

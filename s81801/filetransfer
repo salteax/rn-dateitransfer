@@ -1,3 +1,26 @@
 #!/bin/bash
 
-java -cp bin:s81801/bin FileCopy $1 $2 $3 $4 $5
+# bash script for execution of java file of server or client
+
+# basic usage explanation
+if [ "$1" != "server" ] && [ "$1" != "client" ];
+then
+    echo "Usage:"
+    echo "Server: $0 server <port> [<loss rate> <delay>]"
+    echo "Client: $0 client <ipadress/hostname> <port> <filepath>"
+    exit 1
+fi
+
+# usage of server
+if [ "$1" = "server" ];
+then
+    java -cp $(dirname "$0")/bin Server $2 $3 $4
+fi
+
+# usage of client
+if [ "$1" = "client" ];
+then
+    java -cp $(dirname "$0")/bin Client $2 $3 $4
+fi
+
+exit $?;

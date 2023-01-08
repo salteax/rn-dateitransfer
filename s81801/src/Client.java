@@ -17,21 +17,21 @@ public class Client {
         }
 
         String hostname, filepath, protocol;
-        int port;
+        int port = 0;
+        InetAddress address = null;
 
         hostname = args[0];
         try {
-            InetAddress address = InetAddress.getByName(hostname);
-        } catch(UnknownHostException e) {
+            address = InetAddress.getByName(hostname);
+        } catch(UnknownHostException ex) {
             System.out.println("\'" + hostname + "\' is not a valid ip address/hostname.");
             System.exit(1);
         }
         
-        port = 0;
         try {
             port = Integer.parseInt(args[1]);
-        } catch(NumberFormatException e) {
-            System.out.println("\'" + Integer.toString(port) + "\' is not a valid number.");
+        } catch(NumberFormatException ex) {
+            System.out.println("\'" + args[1] + "\' is not a valid number.");
             System.exit(1);
         } 
         
@@ -49,7 +49,6 @@ public class Client {
         }
 
         try {
-            InetAddress address = InetAddress.getByName(hostname);
             DatagramSocket socket = new DatagramSocket();
 
             while(true) {

@@ -16,10 +16,14 @@ public class Client {
             System.exit(1);
         }
 
+        /* variable delaration/initialization */
         String hostname, filepath, protocol;
         int port = 0;
+        long fileSize = 0;
         InetAddress address = null;
-
+        DatagramSocket socket = null;
+        
+        /* get hostname, exception handling */
         hostname = args[0];
         try {
             address = InetAddress.getByName(hostname);
@@ -28,6 +32,7 @@ public class Client {
             System.exit(1);
         }
         
+        /* get port, exception handling */ 
         try {
             port = Integer.parseInt(args[1]);
         } catch(NumberFormatException ex) {
@@ -35,13 +40,18 @@ public class Client {
             System.exit(1);
         } 
         
+        /* get filepath, exception handling */
         filepath = args[2];
         File file = new File(filepath);
         if(!file.exists()) {
-            System.out.println("\'" + filepath + "\' is not a valid path.");
+            System.out.println("\'" + filepath + "\' is not a valid file path.");
             System.exit(1);
         }
         
+        /* get filesize */
+        fileSize = file.length();
+
+        /* get protocol, exception handling */
         protocol = args[3];
         if(!protocol.equals("sw") && !protocol.equals("gbn")) {
             System.out.println("\'" + protocol + "\' is not valid, it must be either sw or gbn.");
@@ -49,9 +59,9 @@ public class Client {
         }
 
         try {
-            DatagramSocket socket = new DatagramSocket();
+            socket = new DatagramSocket();
 
-            while(true) {
+            /*while(true) {
                 DatagramPacket request = new DatagramPacket(new byte[1], 1, address, port);
                 socket.send(request);
 
@@ -64,7 +74,7 @@ public class Client {
                 System.out.println(quote + "\n");
 
                 Thread.sleep(10000);
-            }
+            }*/
         } catch(SocketTimeoutException ex) {
             System.out.println("Timeout error: " + ex.getMessage());
             ex.printStackTrace();
@@ -75,4 +85,8 @@ public class Client {
             ex.printStackTrace();
         }
     }
+
+    public static void createStartPacket() {}
+
+    public static void sendStartPacket() {}
 }

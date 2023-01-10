@@ -1,3 +1,6 @@
+import java.io.*; 
+import java.net.*; 
+
 public class Server {
     public static void main(String args[]) {
         if(args.length != 1  && args.length != 3) {
@@ -7,6 +10,8 @@ public class Server {
     
         int port = 0, delay = 0;
         double lossrate = 0;
+        DatagramSocket serverSocket = null;
+        byte[] receiveData = new byte[1024];
     
         try {
             port = Integer.parseInt(args[0]);
@@ -37,6 +42,20 @@ public class Server {
                 System.out.println("\'" + args[2] + "\' must be a positve number.");
                 System.exit(1);
             }
+        }
+
+        try {
+            serverSocket = new DatagramSocket(port);
+
+            while(true) { 
+                DatagramPacket receivePacket =  new DatagramPacket(receiveData, receiveData.length); 
+                serverSocket.receive(receivePacket); 
+                System.out.println(receivePacket.getData()); 
+            }
+        } catch(SocketException ex) {
+            System.out.println(ex.getMessage());
+        } catch(IOException ex) {
+            System.out.println(ex.getMessage());
         }
     }
 }

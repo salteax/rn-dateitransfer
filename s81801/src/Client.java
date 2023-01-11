@@ -1,4 +1,3 @@
-import java.net.InetAddress;
 import java.io.*;
 import java.net.*;
 import java.nio.*;
@@ -12,6 +11,7 @@ import java.util.zip.CRC32;
  */
 
 public class Client {
+    public static int socketTimeout = 1000;
     public static void main(String args[]) {
         if(args.length != 4) {
             System.out.println("Expected parameters (in order): <ipaddress/hostname> <port> <filepath> <protocol>");
@@ -61,34 +61,17 @@ public class Client {
             System.exit(1);
         }
         
-        startPacket = createStartPacket(file);
+        /* create start packet */
+        startPacket = createStartPacket(file); // lesen crc32, bytebuffer, byte[]
 
-        /*try {
+        try {
             socket = new DatagramSocket();
+            sendPacket(socket, startPacket, address, port);
+        } catch (SocketException ex) {
+            System.out.println("Could not open socket.");
+            System.exit(1);
+        }
 
-            /*while(true) {
-                DatagramPacket request = new DatagramPacket(new byte[1], 1, address, port);
-                socket.send(request);
-
-                byte[] buffer = new byte[512];
-                DatagramPacket response = new DatagramPacket(buffer, buffer.length);
-                socket.receive(response);
-
-                String quote = new String(buffer, 0, response.getLength());
-
-                System.out.println(quote + "\n");
-
-                Thread.sleep(10000);
-            }
-        } catch(SocketTimeoutException ex) {
-            System.out.println("Timeout error: " + ex.getMessage());
-            ex.printStackTrace();
-        } catch(IOException ex) {
-            System.out.println("Client error: " + ex.getMessage());
-            ex.printStackTrace();
-        } catch(InterruptedException ex) {
-            ex.printStackTrace();
-        }*/
     }
 
     public static byte[] createStartPacket(File file) {
@@ -140,11 +123,30 @@ public class Client {
         crc32 = new CRC32();
         crc32.update(Arrays.copyOfRange(startPacketData.array(), 4, startPacketData.position()));
         startPacketData.putLong(crc32.getValue());
+        System.out.println(crc32.getValue());
     
         byte[] startPacket = startPacketData.array();
+
+        System.out.println(Arrays.toString(startPacket));
 
         return startPacket;
     }
 
-    public static void sendStartPacket() {}
+    public static void sendPacket(DatagramSocket socket, byte[] dataPacket, InetAddress address, int port) {
+        DatagramPacket packet = null;
+        int i = 0;
+
+        packet = new DatagramPacket(dataPacket, dataPacket.length, address, port);
+
+        while(i < 10) {
+            i++;
+            try {
+                socket.setSoTimeout(socketTimeout);
+                socket.send(packet);
+            } catch(IOException ex) {
+                System.out.println("Could not send packet.");
+                continue;
+            }
+        }
+    }
 }

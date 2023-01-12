@@ -12,6 +12,7 @@ import java.util.zip.CRC32;
 
 public class Client {
     public static int socketTimeout = 1000;
+    public static double alpha = 0.9;
     public static void main(String args[]) {
         if(args.length != 4) {
             System.out.println("Expected parameters (in order): <ipaddress/hostname> <port> <filepath> <protocol>");
@@ -121,7 +122,7 @@ public class Client {
         startPacketData.put(fileNameByte);
 
         crc32 = new CRC32();
-        crc32.update(Arrays.copyOfRange(startPacketData.array(), 4, startPacketData.position()));
+        crc32.update(Arrays.copyOfRange(startPacketData.array(), 8, startPacketData.position()));
         startPacketData.putLong(crc32.getValue());
         System.out.println(crc32.getValue());
     
@@ -134,6 +135,7 @@ public class Client {
 
     public static void sendPacket(DatagramSocket socket, byte[] dataPacket, InetAddress address, int port) {
         DatagramPacket packet = null;
+        byte[] returnDataPacket = new byte[2];
         int i = 0;
 
         packet = new DatagramPacket(dataPacket, dataPacket.length, address, port);
@@ -147,6 +149,26 @@ public class Client {
                 System.out.println("Could not send packet.");
                 continue;
             }
+            try {
+                socket.receive(packet);
+            } catch(IOException ex) {
+                System.out.println("Could not receive packet.");
+                socketTimeout = (int) ((alpha * socketTimeout) + ((1-alpha) * socketTimeout));
+                continue;
+            }
+
+            returnDataPacket = packet.getData();
+
+            if(!Arrays.equals(Arrays.copyOfRange(returnDataPacket, 0, 2), Arrays.copyOfRange(dataPacket, 0, 2))) {
+                System.out.println("Received packet with wrong sessionnumber.");
+                continue;
+            }
+            if(!Arrays.equals(Arrays.copyOfRange(returnDataPacket, 2, 4), Arrays.copyOfRange(dataPacket, 2, 4))) {
+                System.out.println("Received packet with wrong packetnumber.");
+                continue;
+            }
+            System.out.println("Received response.");
+            break;
         }
     }
 }

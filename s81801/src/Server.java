@@ -11,12 +11,12 @@ public class Server {
             System.exit(1);
         }
     
-        int port = 0, delay = 0, fileNameSizeInt = 0, receiveCrc32Int = 0, crc32Int = 0;
+        int port = 0, delay = 0, fileNameSizeInt = 0, receiveCrc32Int = 0, crc32Int = 0, ack = 0, packetNumber = 0;
         double lossrate = 0;
         DatagramSocket serverSocket = null;
         InetAddress address = null;
         ByteBuffer byteBuffer = null;
-        byte[] receiveData = new byte[1400], dataPacketByte = null, sessionNumberByte = new byte[2], startID = new byte[5], fileSize = new byte[8], fileNameSize = new byte[8], fileName = null, receiveCrc32 = new byte[8], packetNumberByte = new byte[4];
+        byte[] receiveData = new byte[1400], dataPacketByte = null, sessionNumberByte = new byte[2], startID = new byte[5], fileSize = new byte[8], fileNameSize = new byte[8], fileName = null, receiveCrc32 = new byte[8], packetNumberByte = new byte[4], returnData = new byte[3];
         CRC32 crc32 = null;
     
         try {
@@ -72,36 +72,57 @@ public class Server {
             address = receivePacket.getAddress();
 
             dataPacketByte = Arrays.copyOfRange(receivePacket.getData(), 0, receivePacket.getLength());
-
             sessionNumberByte = Arrays.copyOfRange(dataPacketByte, 0, 4);
+
             packetNumberByte = Arrays.copyOfRange(dataPacketByte, 4, 8);
+            byteBuffer = ByteBuffer.wrap(packetNumberByte);
+            packetNumber = byteBuffer.getInt();
+            if(packetNumber != ack) {
+                System.out.print("Packetnumber \'" + packetNumber + "\' of startpacket is not equal to expected ACK \'"+ ack + "\'.");
+                continue;
+            }
+
             startID = Arrays.copyOfRange(dataPacketByte, 8, 13);
+            try {
+                if(!Arrays.equals(startID, "Start".getBytes("US-ASCII"))) {
+                    System.out.println("Startpacket contains wrong startID.");
+                    continue;
+                }
+            } catch(UnsupportedEncodingException ex) {
+                System.out.println("Problem using charset \'US-ASCII\'.");
+                System.exit(1);
+            }
+            
             fileSize = Arrays.copyOfRange(dataPacketByte, 13, 21);
             fileNameSize = Arrays.copyOfRange(dataPacketByte, 21, 29);
 
-            System.out.println("f:" + Arrays.toString(fileNameSize));
-            
             byteBuffer = ByteBuffer.wrap(fileNameSize);
             fileNameSizeInt = (int) byteBuffer.getLong();
-            System.out.println(fileNameSizeInt);
             fileName = new byte[fileNameSizeInt];
             fileName = Arrays.copyOfRange(dataPacketByte, 29, 29+fileNameSizeInt);
 
             receiveCrc32 = Arrays.copyOfRange(dataPacketByte, 29+fileNameSizeInt, 29+fileNameSizeInt+8);
-            System.out.println("f:" + Arrays.toString(receiveCrc32));
             byteBuffer = ByteBuffer.wrap(receiveCrc32);
             receiveCrc32Int = (int) byteBuffer.getLong();
 
             crc32 = new CRC32();
-            crc32.update(Arrays.copyOfRange(dataPacketByte, 4, 29+fileNameSizeInt));
+            crc32.update(Arrays.copyOfRange(dataPacketByte, 8, 29+fileNameSizeInt));
             crc32Int = (int) crc32.getValue();
 
-            // TODO EXCEPTION HANDLING
+            if(crc32Int != receiveCrc32Int) {
+                System.out.println("The calculated CRC32 \'" + crc32Int + "\' does not match the received CRC32 \'" + receiveCrc32Int + "\'.");
+                continue;
+            }
 
-            System.out.println("erhalten:" + crc32Int + "\ngesendet:" + receiveCrc32Int);
+            returnData = Arrays.copyOfRange(receiveData, 0, 4);
+            DatagramPacket returnPacket = new DatagramPacket(returnData, returnData.length, address, port);
 
-            byteBuffer = ByteBuffer.wrap(fileSize);
-            System.out.println(byteBuffer.getLong());
+            try {
+                serverSocket.send(returnPacket);
+            } catch(IOException ex) {
+                System.out.println("Could not send data.");
+                System.exit(1);
+            }
         }
     }
 }

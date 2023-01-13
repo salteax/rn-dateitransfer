@@ -13,6 +13,7 @@ import java.util.zip.CRC32;
 public class Client {
     public static int socketTimeout = 1000;
     public static double alpha = 0.9;
+
     public static void main(String args[]) {
         if(args.length != 4) {
             System.out.println("Expected parameters (in order): <ipaddress/hostname> <port> <filepath> <protocol>");
@@ -21,11 +22,12 @@ public class Client {
 
         /* variable delaration/initialization */
         String hostname, filepath, protocol;
-        int port = 0;
+        int port = 0, sessionNumber = 0, packetNumber = 0, remainingBytes = 0, sendBytes = 0, maxBytes = 1400;
         long fileSize = 0;
         InetAddress address = null;
         DatagramSocket socket = null;
-        byte[] startPacket = null;
+        byte[] startPacket = null, dataPacket = null, data = null, fileDataByte = null;
+        Random random = null;
         
         /* get hostname, exception handling */
         hostname = args[0];
@@ -55,6 +57,9 @@ public class Client {
         /* get filesize */
         fileSize = file.length();
 
+        /* create filedatabyte */
+        fileDataByte = new byte[(int)fileSize];
+
         /* get protocol, exception handling */
         protocol = args[3];
         if(!protocol.equals("sw") && !protocol.equals("gbn")) {
@@ -62,31 +67,54 @@ public class Client {
             System.exit(1);
         }
         
-        /* create start packet */
-        startPacket = createStartPacket(file); // lesen crc32, bytebuffer, byte[]
+        /* create sessionnumber */
+        random = new Random();
+        sessionNumber = random.nextInt(65536);
 
+        /* create start packet */
+        startPacket = createStartPacket(file, sessionNumber); // lesen crc32, bytebuffer, byte[]
+
+        /* send start packet */
         try {
             socket = new DatagramSocket();
-            sendPacket(socket, startPacket, address, port);
+            sendStartPacket(socket, startPacket, address, port);
         } catch (SocketException ex) {
             System.out.println("Could not open socket.");
             System.exit(1);
         }
+        
+        remainingBytes = (int) fileSize;
+        while(sendBytes < remainingBytes) {
+            if(remainingBytes < maxBytes) {
+                maxBytes = remainingBytes;
+            }
+            remainingBytes = remainingBytes - maxBytes;
 
+            data = new byte[maxBytes];
+            data = Arrays.copyOfRange(fileDataByte, sendBytes, sendBytes+maxBytes);
+            
+            packetNumber++;
+            if(remainingBytes == maxBytes) {
+                // letztes Packet, CRC32 senden
+                dataPacket = createDataPacket(file, sessionNumber, packetNumber, data, 0); // CRC anstelle von null
+            } else {
+                dataPacket = createDataPacket(file, sessionNumber, packetNumber, data, 0);
+            }
+
+            
+            
+        }
     }
 
-    public static byte[] createStartPacket(File file) {
-        int sessionNumber = 0, packetNumber = 0;
+    public static byte[] createStartPacket(File file, int sessionNumber) {
+        int packetNumber = 0;
         long fileSize = 0, fileNameSize = 0;
         String strStartID = "Start";
         byte[] startID = new byte[5], fileNameByte = null;
-        Random random = null;
+        
         ByteBuffer startPacketData = null;
         CRC32 crc32 = null;
         
-        random = new Random();
-        sessionNumber = random.nextInt(65536);
-
         try {
             startID = strStartID.getBytes("US-ASCII");
         } catch(UnsupportedEncodingException ex) {
@@ -133,7 +161,7 @@ public class Client {
         return startPacket;
     }
 
-    public static void sendPacket(DatagramSocket socket, byte[] dataPacket, InetAddress address, int port) {
+    public static void sendStartPacket(DatagramSocket socket, byte[] dataPacket, InetAddress address, int port) {
         DatagramPacket packet = null;
         byte[] returnDataPacket = new byte[2];
         int i = 0;
@@ -170,5 +198,19 @@ public class Client {
             System.out.println("Received response.");
             break;
         }
+    }
+
+    public static byte[] createDataPacket(File file, int sessionNumber, int packetNumber, byte[] data, long crc32Long) {
+        ByteBuffer packetDataBuffer = null;
+
+        packetData.allocate(4+maxBytes);
+        packetData.putInt(sessionNumber);
+        packetData.putInt(packetNumber);
+        packetData.put(data);
+        if(crc32Long != 0) {
+            packetData.putLong(crc32Long);
+        }
+
+        return packetData.array();
     }
 }

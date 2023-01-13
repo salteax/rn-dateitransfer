@@ -63,7 +63,7 @@ public class Server {
                 serverSocket.setSoTimeout(0);
                 serverSocket.receive(receivePacket);
             } catch(SocketException ex) {
-                System.out.println("Problem with Socket.");
+                System.out.println("Problem with socket.");
             } catch(IOException ex) {
                 System.out.println("Could not receive data.");
             }

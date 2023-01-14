@@ -30,6 +30,7 @@ public class Client {
         byte[] startPacket = null, dataPacket = null, data = null, fileDataByte = null;
         Random random = null;
         CRC32 crc32 = null;
+        FileInputStream fileInputStream = null;
         
         /* get hostname, exception handling */
         hostname = args[0];
@@ -61,7 +62,18 @@ public class Client {
 
         /* create filedatabyte */
         fileDataByte = new byte[(int)fileSize];
-
+        try {
+            fileInputStream = new FileInputStream(file);
+            fileInputStream.read(fileDataByte);
+            fileInputStream.close();
+        } catch(FileNotFoundException ex) {
+            System.out.println("Could not find file.");
+            System.exit(1);
+        } catch(IOException ex) {
+            System.out.println("Could not read file.");
+            System.exit(1);
+        }
+        
         /* get protocol, exception handling */
         protocol = args[3];
         if(!protocol.equals("sw") && !protocol.equals("gbn")) {
@@ -74,12 +86,12 @@ public class Client {
         sessionNumber = random.nextInt(65536);
 
         /* create start packet */
-        startPacket = createStartPacket(file, sessionNumber); // lesen crc32, bytebuffer, byte[]
+        startPacket = createStartPacket(file, sessionNumber);
 
         /* send start packet */
         try {
             socket = new DatagramSocket();
-            System.out.println("Trying to send start packet.");
+            System.out.println("Trying to send start packet with sessionnumber \'" + sessionNumber + "\' and packetnumber \'" + packetNumber + "\'.");
             if(sendDataPacket(socket, startPacket, address, port)) {
                 System.out.println("Start packet send.");
             } else {
@@ -101,22 +113,26 @@ public class Client {
 
             data = new byte[maxBytes];
             data = Arrays.copyOfRange(fileDataByte, sendBytes, sendBytes+maxBytes);
-            
+
             packetNumber++;
             if(remainingBytes == (maxBytes-8)) {
                 crc32 = new CRC32();
                 crc32.update(fileDataByte);
                 crc32Int = (int) crc32.getValue();
-            } 
+            }
             
             dataPacket = createDataPacket(file, sessionNumber, packetNumber, data, crc32Int);
 
-            System.out.println("Trying to send data packet.");
+            System.out.println("Trying to send data packet with sessionnumber \'" + sessionNumber + "\' and packetnumber \'" + packetNumber + "\'.");
             if(sendDataPacket(socket, dataPacket, address, port)) {
                 System.out.println("Data packet send.");
             } else {
                 System.out.println("Data packet could not be send.");
                 System.exit(1);
+            }
+
+            if(remainingBytes == 0) {
+                break;
             }
         }
     }
@@ -167,11 +183,8 @@ public class Client {
         crc32 = new CRC32();
         crc32.update(Arrays.copyOfRange(startPacketData.array(), 8, startPacketData.position()));
         startPacketData.putLong(crc32.getValue());
-        System.out.println(crc32.getValue());
     
         byte[] startPacket = startPacketData.array();
-
-        System.out.println(Arrays.toString(startPacket));
 
         return startPacket;
     }
@@ -213,7 +226,7 @@ public class Client {
                 System.out.println("Received packet with wrong packetnumber.");
                 continue;
             }
-            
+
             return true;
         }
         return false;
@@ -226,9 +239,9 @@ public class Client {
         packetDataBuffer.putInt(sessionNumber);
         packetDataBuffer.putInt(packetNumber);
         packetDataBuffer.put(data);
-        if(crc32Long != 0) {
+        /*if(crc32Long != 0) {
             packetDataBuffer.putLong(crc32Long);
-        }
+        }*/
 
         return packetDataBuffer.array();
     }

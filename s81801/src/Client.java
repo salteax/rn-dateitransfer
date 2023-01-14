@@ -13,6 +13,7 @@ import java.util.zip.CRC32;
 public class Client {
     public static int socketTimeout = 1000;
     public static double alpha = 0.9;
+    public static int maxBytes = 1400;
 
     public static void main(String args[]) {
         if(args.length != 4) {
@@ -22,12 +23,13 @@ public class Client {
 
         /* variable delaration/initialization */
         String hostname, filepath, protocol;
-        int port = 0, sessionNumber = 0, packetNumber = 0, remainingBytes = 0, sendBytes = 0, maxBytes = 1400;
+        int port = 0, sessionNumber = 0, packetNumber = 0, remainingBytes = 0, sendBytes = 0, crc32Int = 0;
         long fileSize = 0;
         InetAddress address = null;
         DatagramSocket socket = null;
         byte[] startPacket = null, dataPacket = null, data = null, fileDataByte = null;
         Random random = null;
+        CRC32 crc32 = null;
         
         /* get hostname, exception handling */
         hostname = args[0];
@@ -77,14 +79,21 @@ public class Client {
         /* send start packet */
         try {
             socket = new DatagramSocket();
-            sendStartPacket(socket, startPacket, address, port);
+            System.out.println("Trying to send start packet.");
+            if(sendDataPacket(socket, startPacket, address, port)) {
+                System.out.println("Start packet send.");
+            } else {
+                System.out.println("Start packet could not be send.");
+                System.exit(1);
+            }
         } catch (SocketException ex) {
             System.out.println("Could not open socket.");
             System.exit(1);
         }
         
+        /* send data packets */
         remainingBytes = (int) fileSize;
-        while(sendBytes < remainingBytes) {
+        while(sendBytes < remainingBytes+8) {
             if(remainingBytes < maxBytes) {
                 maxBytes = remainingBytes;
             }
@@ -94,15 +103,21 @@ public class Client {
             data = Arrays.copyOfRange(fileDataByte, sendBytes, sendBytes+maxBytes);
             
             packetNumber++;
-            if(remainingBytes == maxBytes) {
-                // letztes Packet, CRC32 senden
-                dataPacket = createDataPacket(file, sessionNumber, packetNumber, data, 0); // CRC anstelle von null
-            } else {
-                dataPacket = createDataPacket(file, sessionNumber, packetNumber, data, 0);
-            }
+            if(remainingBytes == (maxBytes-8)) {
+                crc32 = new CRC32();
+                crc32.update(fileDataByte);
+                crc32Int = (int) crc32.getValue();
+            } 
+            
+            dataPacket = createDataPacket(file, sessionNumber, packetNumber, data, crc32Int);
 
-            
-            
+            System.out.println("Trying to send data packet.");
+            if(sendDataPacket(socket, dataPacket, address, port)) {
+                System.out.println("Data packet send.");
+            } else {
+                System.out.println("Data packet could not be send.");
+                System.exit(1);
+            }
         }
     }
 
@@ -161,7 +176,7 @@ public class Client {
         return startPacket;
     }
 
-    public static void sendStartPacket(DatagramSocket socket, byte[] dataPacket, InetAddress address, int port) {
+    public static boolean sendDataPacket(DatagramSocket socket, byte[] dataPacket, InetAddress address, int port) {
         DatagramPacket packet = null;
         byte[] returnDataPacket = new byte[2];
         int i = 0;
@@ -170,6 +185,7 @@ public class Client {
 
         while(i < 10) {
             i++;
+
             try {
                 socket.setSoTimeout(socketTimeout);
                 socket.send(packet);
@@ -177,6 +193,7 @@ public class Client {
                 System.out.println("Could not send packet.");
                 continue;
             }
+
             try {
                 socket.receive(packet);
             } catch(IOException ex) {
@@ -187,30 +204,36 @@ public class Client {
 
             returnDataPacket = packet.getData();
 
-            if(!Arrays.equals(Arrays.copyOfRange(returnDataPacket, 0, 2), Arrays.copyOfRange(dataPacket, 0, 2))) {
+            if(!Arrays.equals(Arrays.copyOfRange(returnDataPacket, 0, 4), Arrays.copyOfRange(dataPacket, 0, 4))) {
                 System.out.println("Received packet with wrong sessionnumber.");
                 continue;
             }
-            if(!Arrays.equals(Arrays.copyOfRange(returnDataPacket, 2, 4), Arrays.copyOfRange(dataPacket, 2, 4))) {
+
+            if(!Arrays.equals(Arrays.copyOfRange(returnDataPacket, 4, 8), Arrays.copyOfRange(dataPacket, 4, 8))) {
                 System.out.println("Received packet with wrong packetnumber.");
                 continue;
             }
-            System.out.println("Received response.");
-            break;
+            
+            return true;
         }
+        return false;
     }
 
     public static byte[] createDataPacket(File file, int sessionNumber, int packetNumber, byte[] data, long crc32Long) {
         ByteBuffer packetDataBuffer = null;
 
-        packetData.allocate(4+maxBytes);
-        packetData.putInt(sessionNumber);
-        packetData.putInt(packetNumber);
-        packetData.put(data);
+        packetDataBuffer = packetDataBuffer.allocate(8+maxBytes);
+        packetDataBuffer.putInt(sessionNumber);
+        packetDataBuffer.putInt(packetNumber);
+        packetDataBuffer.put(data);
         if(crc32Long != 0) {
-            packetData.putLong(crc32Long);
+            packetDataBuffer.putLong(crc32Long);
         }
 
-        return packetData.array();
+        return packetDataBuffer.array();
     }
+
+    /*public static void sendDataPacket(DatagramSocket socket, byte[] dataPacket, InetAddress address, int port) {
+
+    }*/
 }

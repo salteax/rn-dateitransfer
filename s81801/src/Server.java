@@ -15,7 +15,7 @@ public class Server {
         int port = 0, delay = 0, fileNameSizeInt = 0, receiveCrc32Int = 0, crc32Int = 0, sessionNumber = 0, i = 0, receivedBytes = 0, sessionNumberData = 0, packetNumberData = 0;
         byte packetNumber = (byte) 0, ack = (byte) 0;
         long fileSizeLong = 0;
-        double lossrate = 0;
+        double lossRate = 0;
         String fileNameString;
         DatagramSocket serverSocket = null;
         InetAddress address = null;
@@ -24,6 +24,7 @@ public class Server {
         CRC32 crc32 = null;
         File file = null;
         FileOutputStream fileOutputStream = null;
+        Random random = null;
     
         try {
             port = Integer.parseInt(args[0]);
@@ -34,12 +35,12 @@ public class Server {
 
         if(args.length == 3) {
             try {
-                lossrate = Double.parseDouble(args[1]);
+                lossRate = Double.parseDouble(args[1]);
             } catch(NumberFormatException ex) {
                 System.out.println("\'" + args[1] + "\' is not a valid number.");
                 System.exit(1);
             }
-            if(lossrate < 0 || lossrate >= 1) {
+            if(lossRate < 0 || lossRate >= 1) {
                 System.out.println("\'" + args[1] + "\' must be a number between 0 and 1.");
                 System.exit(1);
             }
@@ -64,6 +65,8 @@ public class Server {
         }
         System.out.println("Socket started on port \'" + port + "\'.");
 
+        random = new Random();
+
         while(true) { 
             ack = (byte) 0;
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
@@ -76,6 +79,12 @@ public class Server {
             } catch(IOException ex) {
                 System.out.println("Could not receive data.");
             }
+
+            if(random.nextDouble() < lossRate) {
+                System.out.println("Packet got lost on receive.");
+                continue;
+            }
+
             System.out.println("Received start packet.");
             
             port = receivePacket.getPort();
@@ -134,15 +143,25 @@ public class Server {
 
             returnData = Arrays.copyOfRange(receiveData, 0, 4);
             DatagramPacket returnPacket = new DatagramPacket(returnData, returnData.length, address, port);
-
-            System.out.println("Trying to return start packet.");
             try {
-                serverSocket.send(returnPacket);
-            } catch(IOException ex) {
-                System.out.println("Could not send data.");
+                Thread.sleep((int) random.nextDouble() * 2 * delay);
+            } catch(InterruptedException ex) {
+                System.out.println("Thread error.");
                 System.exit(1);
             }
-            System.out.println("Returned start packet.");
+             
+            System.out.println("Trying to return start packet.");
+            if(random.nextDouble() >= lossRate) {
+                try {
+                    serverSocket.send(returnPacket);
+                } catch(IOException ex) {
+                    System.out.println("Could not send data.");
+                    System.exit(1);
+                }
+                System.out.println("Returned start packet.");
+            } else {
+                System.out.println("Packet got lost on response.");
+            }
 
             try {
                 serverSocket.setSoTimeout(1000);
@@ -182,7 +201,18 @@ public class Server {
                     }
                     i++;
                     continue;
-                } 
+                }
+
+                if(random.nextDouble() < lossRate) {
+                    System.out.println("Packet got lost on receive.");
+                    if(ack == (byte) 0) {
+                        ack = (byte) 1;
+                    } else {
+                        ack = (byte) 0;
+                    }
+                    i++;
+                    continue;
+                }
 
                 port = receivePacket.getPort();
                 address = receivePacket.getAddress();
@@ -252,12 +282,24 @@ public class Server {
 
                     System.out.println("Trying to return data packet.");
                     try {
-                        serverSocket.send(returnPacket);
-                    } catch(IOException ex) {
-                        System.out.println("Could not send data.");
+                        Thread.sleep((int) random.nextDouble() * 2 * delay);
+                    } catch(InterruptedException ex) {
+                        System.out.println("Thread error.");
                         System.exit(1);
                     }
-                    System.out.println("Returned data packet.");
+
+                    if(random.nextDouble() >= lossRate) {
+                        try {
+                            serverSocket.send(returnPacket);
+                        } catch(IOException ex) {
+                            System.out.println("Could not send data.");
+                            System.exit(1);
+                        }
+                        System.out.println("Returned data packet.");
+                    } else {
+                        System.out.println("Packet got lost on response.");
+                    }
+                    
                 } else {
                     dataPacketByteClean = new byte[receiveData.length - 8];
                     dataPacketByteClean = Arrays.copyOfRange(receiveData, 0, receiveData.length - 8);
@@ -303,13 +345,17 @@ public class Server {
                     }
 
                     System.out.println("Trying to return data packet.");
-                    try {
-                        serverSocket.send(returnPacket);
-                    } catch(IOException ex) {
-                        System.out.println("Could not send data.");
-                        System.exit(1);
+                    if(random.nextDouble() >= lossRate) {
+                        try {
+                            serverSocket.send(returnPacket);
+                        } catch(IOException ex) {
+                            System.out.println("Could not send data.");
+                            System.exit(1);
+                        }
+                        System.out.println("Returned data packet.");
+                    } else {
+                        System.out.println("Packet got lost on response.");
                     }
-                    System.out.println("Returned data packet.");
 
                     break;
                 }

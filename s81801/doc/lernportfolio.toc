@@ -1,0 +1,13 @@
+\babel@toc {ngerman}{}\relax 
+\contentsline {section}{\numberline {1}Einleitung}{3}{}%
+\contentsline {section}{\numberline {2}Lerndokumentation}{4}{}%
+\contentsline {subsection}{\numberline {2.1}Entwicklungstag 1, 04. Januar 2023}{4}{}%
+\contentsline {subsection}{\numberline {2.2}Entwicklungstag 2, 07. Januar 2023}{4}{}%
+\contentsline {subsection}{\numberline {2.3}Entwicklungstag 3, 08. Januar 2023}{4}{}%
+\contentsline {subsection}{\numberline {2.4}Entwicklungstag 4, 11. Januar 2023}{4}{}%
+\contentsline {subsection}{\numberline {2.5}Entwicklungstag 5, 12. Januar 2023}{4}{}%
+\contentsline {subsection}{\numberline {2.6}Entwicklungstag 6, 13. Januar 2023}{5}{}%
+\contentsline {subsection}{\numberline {2.7}Entwicklungstag 7, 15. Januar 2023}{5}{}%
+\contentsline {section}{\numberline {3}Vorschläge}{6}{}%
+\contentsline {subsection}{\numberline {3.1}Verbesserungen}{6}{}%
+\providecommand \tocbasic@end@toc@file {}\tocbasic@end@toc@file 

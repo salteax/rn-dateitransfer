@@ -1,0 +1,54 @@
+\documentclass[a4paper,12pt,titlepage]{scrartcl}
+\usepackage{helvet}
+\usepackage{fullpage}
+\usepackage{amsmath}
+\usepackage[utf8]{inputenc}
+\usepackage[ngerman]{babel}
+\renewcommand{\familydefault}{\sfdefault}
+\title{Rechnernetze I}
+\subtitle{Beleg - Dokumentation}
+\author{s81801, Paul Koreng}
+\date{\today}
+
+\begin{document}
+    {
+        \centering
+        \maketitle
+    }
+    \newpage
+    \tableofcontents
+    \newpage
+    \section{Durchsatzberechnung}
+        Bestimmen Sie den theoretisch max. erzielbaren Durchsatz bei 10\% Paketverlust und 10 ms Verzögerung mit dem SW-Protokoll und vergleichen diesen mit Ihrem Programm. Begründen Sie die Unterschiede.\\
+
+        Der Durchsatz lässt sich mit folgender Formel berechnen:
+        \begin{equation*}
+            \eta_{SW} = \frac{T_{p}}{T_{p} + 2T_{a} + T_{ACK}} + (1 - P_{de})(1-P_{ru})R
+        \end{equation*}
+
+        Die dazugehörigen Werter ergeben sich wie folgt:
+        \begin{equation*}
+            P_{de} = P_{ru} = 0.01
+        \end{equation*}
+
+        \begin{equation*}
+            T_{a} = 0.001ms
+        \end{equation*}
+
+        \begin{equation*}
+            T_{p} = \frac{11224}{r_{b}}
+        \end{equation*}
+
+        \begin{equation*}
+            T_{ACK} = \frac{24}{r_{b}}
+        \end{equation*}
+        
+        \begin{equation*}
+            R = \frac{11200}{11224} \approx 0.99786
+        \end{equation*}
+
+        Mit den berechneten Werten ergibt sich der Durchsatz wie folgt:
+        \begin{equation*}
+            \eta_{SW} = \frac{\frac{11224}{r_{b}}}{\frac{11224}{r_{b}} + 2 * 0.001 + \frac{24}{r_{b}}} + (1 - 0.01)(1-0.01)*0.99786
+        \end{equation*}
+\end{document}

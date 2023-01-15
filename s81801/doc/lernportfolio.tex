@@ -1,0 +1,47 @@
+\documentclass[a4paper,12pt,titlepage]{scrartcl}
+\usepackage{helvet}
+\usepackage{fullpage}
+\usepackage[utf8]{inputenc}
+\usepackage[ngerman]{babel}
+\renewcommand{\familydefault}{\sfdefault}
+\title{Rechnernetze I}
+\subtitle{Beleg - Lernportfolio}
+\author{s81801, Paul Koreng}
+\date{\today}
+
+\begin{document}
+    {
+        \centering
+        \maketitle
+    }
+    \newpage
+    \tableofcontents
+    \newpage
+    \section{Einleitung}
+        Im Rahmen des Rechnernetze I Belegs soll ein Lernportfolio erstellt werden, in welchem Lernfortschritte, Misserfolge und Vorschläge zur Erweiterung \& Verbesserung des Beleges dokumentiert werden sollen.\\
+        Bei dem anzufertigendem Beleg handelt es sich um ein UDP Client und Server der mithilfe eines beschriebenen Übertragungsprotokoll funkioniert. Benutzt wurde lediglich Java und Bash zur Umsetzung.
+    \newpage
+    \section{Lerndokumentation}
+        In den folgenden Abschnitten sind die Lernfortschritte wie auch Misserfolge notiert der Daten an denen aktiv am Projekt gearbeitet wurde.
+        \subsection{Entwicklungstag 1, 04. Januar 2023}
+            Der 1. Tag der Bearbeitung des Belegs begann mit dem reinfinden in die Themenstellung was mir einige Probleme bereitet hat, da ich mich mit dem Thema 1 Jahr lang nicht ausseinander gesetzt habe und ich mich deswegen dazu entschieden habe einfach drauf los zu programmieren. Somit habe ich erstmal die Belegstruktur umgesetzt und das make Script und filetransfer Script mit Bash umgesetzt.
+        \subsection{Entwicklungstag 2, 07. Januar 2023}
+            Am 2. Tag der Bearbeitung des Belegs habe ich versucht Client und Server mit den gegeben Klassen umzusetzten was aber nicht so gut funktioniert hat da ich die Funktion dieser nicht wirklich verstanden habe. Ich habe mich dann dazu entschieden meine eigenen Klassen umzusetzen da ich mich da besser reindenken konnte. Ich habe dann den Client mithilfe der UDP Umsetzung umgesetzt und die Struktur übernommen.
+        \subsection{Entwicklungstag 3, 08. Januar 2023}
+            Am 3. Tag der Entwicklung habe ich weiter am Client gearbeitet, mich mit dem Error Catching von den Eingabevariablen ausseinandergesetzt und den Server grundlegend mittels dem UDP Server Beispiel umgesetzt, so dass ich den Client testen kann während der Entwicklung. Desweiteren habe ich mich nochmal um die Struktur gekümmert und den Client in verschiede Funktionen unterteilt.
+        \subsection{Entwicklungstag 4, 11. Januar 2023}
+            Am 4. Tag habe ich mich mit der Umsetzung des Protokolls ausseinandergesetzt, das Startpaket grundlegend umgesetzt und erste Test vollzogen in dem ich dieses an den Server geschickt habe.
+        \subsection{Entwicklungstag 5, 12. Januar 2023}
+            Der 5. begann mit dem weiterentwickeln des Servers dabei habe ich mich um das Error Catching gekümmert.
+        \subsection{Entwicklungstag 6, 13. Januar 2023}
+            Am 6. Entwicklungstag habe ich die Erstellung der Datenpakete umgesetzt, diese verschickt und beim Server das Handling mit den Paketen umgesetzt.
+        \subsection{Entwicklungstag 7, 15. Januar 2023}
+            Am 7. Entwicklungstag habe ich das messen der Geschwindigkeit im Client umgesetzt und die Fehlersimulation beim Server. Jedoch bin ich auf das Problem gestossen, dass beim erneuten Senden einer Datei auf den Server ein Fehler entsteht und die CRC32 Checksummen nicht mehr gleich sind da diese aus irgendeinem Grund nicht im letzten Paket steht. Den Fehler der dafür sorgt habe ich jedoch nicht gefunden und somit konnte ich nur das einmalige Senden umsetzten.
+    \newpage
+    \section{Vorschläge}
+        Der Beleg ist an sich umfangreich und deckt alles aus den Vorlesung Gelernte ab und dient somit gut dem Festigen der Kenntnisse.
+        \subsection{Verbesserungen}
+            Eventuell eine bessere und umfangrecihere Erklärung der gegeben Klassen und Funktionen damit man diese leichter benutzten kann.\\
+            Das lokale Testskript ging auf meinen Linux Rechner auch nicht da manche Abhängigkeiten gefehlt haben also musste ich diese Suchen und dies selbst beheben, was mich einige Zeit gekostet hat - deswegen denke ich, dass man da den Umgang auch verbessern könnte und gegebenfalls eine Ausgabe und Check einbauen könnten ob noch Abhängigkeiten fehlen damit man dies nicht selber debuggen muss.
+    \newpage
+\end{document}

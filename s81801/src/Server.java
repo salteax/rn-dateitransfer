@@ -235,7 +235,12 @@ public class Server {
                         System.exit(1);
                     } else {
                         fileNameString = new String(fileName, StandardCharsets.UTF_8);
-                        fileNameString = fileNameString.substring(0, fileNameString.indexOf('.')) + "1" + fileNameString.substring(fileNameString.indexOf('.'), fileNameString.length());
+                        
+                        if(fileNameString.contains(".")) {
+                            fileNameString = fileNameString.substring(0, fileNameString.indexOf('.')) + "1" + fileNameString.substring(fileNameString.indexOf('.'), fileNameString.length());
+                        } else {
+                            fileNameString = fileNameString + '1';
+                        }
 
                         try {
                             file = new File(fileNameString);

@@ -3,6 +3,7 @@ import java.net.*;
 import java.nio.*;
 import java.util.*;
 import java.util.zip.CRC32;
+import java.nio.charset.StandardCharsets;
 
 /*
  * 
@@ -14,6 +15,7 @@ public class Client {
     public static int socketTimeout = 1000;
     public static double alpha = 0.9;
     public static int maxBytes = 1400;
+    public static double totalDuration = 0.0, avgSpeed = 0.0, minSpeed = 0.0, maxSpeed = 0.0;
 
     public static void main(String args[]) {
         if(args.length != 4) {
@@ -23,7 +25,8 @@ public class Client {
 
         /* variable delaration/initialization */
         String hostname, filepath, protocol;
-        int port = 0, sessionNumber = 0, packetNumber = 0, remainingBytes = 0, sendBytes = 0, crc32Int = 0;
+        int port = 0, sessionNumber = 0, remainingBytes = 0, sendBytes = 0, crc32Int = 0, dataPacketNumber = 0;
+        byte packetNumber = (byte) 0;
         long fileSize = 0;
         InetAddress address = null;
         DatagramSocket socket = null;
@@ -86,7 +89,7 @@ public class Client {
         sessionNumber = random.nextInt(65536);
 
         /* create start packet */
-        startPacket = createStartPacket(file, sessionNumber);
+        startPacket = createStartPacket(file, sessionNumber, packetNumber);
 
         /* send start packet */
         try {
@@ -106,6 +109,12 @@ public class Client {
         /* send data packets */
         remainingBytes = (int) fileSize;
         while(sendBytes < remainingBytes+8) {
+            if(packetNumber == (byte) 0) {
+                packetNumber = (byte) 1;
+            } else {
+                packetNumber = (byte) 0;
+            }
+
             if(remainingBytes < maxBytes) {
                 maxBytes = remainingBytes;
             }
@@ -115,30 +124,42 @@ public class Client {
             data = Arrays.copyOfRange(fileDataByte, sendBytes, sendBytes+maxBytes);
 
             packetNumber++;
-            if(remainingBytes == (maxBytes-8)) {
+            if(remainingBytes == 0) {
+                if(packetNumber == (byte) 0) {
+                    packetNumber = (byte) 1;
+                } else {
+                    packetNumber = (byte) 0;
+                }
                 crc32 = new CRC32();
                 crc32.update(fileDataByte);
                 crc32Int = (int) crc32.getValue();
             }
             
-            dataPacket = createDataPacket(file, sessionNumber, packetNumber, data, crc32Int);
+            dataPacketNumber++;
+
+            dataPacket = createDataPacket(file, sessionNumber, packetNumber, data, crc32Int, dataPacketNumber);
 
             System.out.println("Trying to send data packet with sessionnumber \'" + sessionNumber + "\' and packetnumber \'" + packetNumber + "\'.");
             if(sendDataPacket(socket, dataPacket, address, port)) {
-                System.out.println("Data packet send.");
+                System.out.println("Successfully send data packet with number \'" + dataPacketNumber + "\'.");
             } else {
-                System.out.println("Data packet could not be send.");
+                System.out.println("Data packet with number \'" + dataPacketNumber + "\' could not be send.");
                 System.exit(1);
             }
 
             if(remainingBytes == 0) {
+                avgSpeed = fileSize/(1000*totalDuration);
+                System.out.println("File transfered.");
+                System.out.println("Total duration: " + String.format("%.5f", totalDuration) + "s");
+                System.out.println("Minimal speed: " + String.format("%.5f", minSpeed) + "kb/s");
+                System.out.println("Maximal speed: " + String.format("%.5f", maxSpeed) + "kb/s");
+                System.out.println("Average speed: " + String.format("%.5f", avgSpeed) + "kb/s");
                 break;
             }
         }
     }
 
-    public static byte[] createStartPacket(File file, int sessionNumber) {
-        int packetNumber = 0;
+    public static byte[] createStartPacket(File file, int sessionNumber, byte packetNumber) {
         long fileSize = 0, fileNameSize = 0;
         String strStartID = "Start";
         byte[] startID = new byte[5], fileNameByte = null;
@@ -189,13 +210,36 @@ public class Client {
         return startPacket;
     }
 
+    public static byte[] createDataPacket(File file, int sessionNumber, byte packetNumber, byte[] data, long crc32Long, int dataPacketNumber) {
+        ByteBuffer packetDataBuffer = null;
+
+        if(crc32Long != 0) {
+            packetDataBuffer = packetDataBuffer.allocate(8+maxBytes+8);
+        } else {
+            packetDataBuffer = packetDataBuffer.allocate(8+maxBytes);
+        }
+        packetDataBuffer.putInt(sessionNumber);
+        packetDataBuffer.putInt(packetNumber);
+        packetDataBuffer.put(data);
+        if(crc32Long != 0) {
+            packetDataBuffer.putLong(crc32Long);
+        }
+
+        System.out.println("Successfully created packet with number \'" + dataPacketNumber + "\'.");
+
+        return packetDataBuffer.array();
+    }
+
     public static boolean sendDataPacket(DatagramSocket socket, byte[] dataPacket, InetAddress address, int port) {
         DatagramPacket packet = null;
-        byte[] returnDataPacket = new byte[2];
+        byte[] returnDataPacket = new byte[4];
         int i = 0;
+        long startTime = 0, stopTime = 0;
+        double duration = 0, speed = 0;
 
         packet = new DatagramPacket(dataPacket, dataPacket.length, address, port);
 
+        startTime = System.nanoTime();
         while(i < 10) {
             i++;
 
@@ -226,27 +270,27 @@ public class Client {
                 System.out.println("Received packet with wrong packetnumber.");
                 continue;
             }
+            
+            stopTime = System.nanoTime();
+            duration = (stopTime - startTime)/1000000000.0;
+            speed = dataPacket.length/(1000*duration);
+            
+            totalDuration = totalDuration + duration;
 
+            if(minSpeed == 0.0 || minSpeed > speed) {
+                minSpeed = speed;
+            }
+            if(maxSpeed == 0.0 || maxSpeed < speed) {
+                maxSpeed = speed;
+            }
+
+            System.out.println("Time passed for response: " + String.format("%.5f", duration) + "s");
+            System.out.println("Speed: " + String.format("%.5f", speed) + "kb/s");
             return true;
         }
+        stopTime = System.nanoTime();
+        duration = (stopTime - startTime)/1000000000.0;
+        System.out.println("Time passed with no response: " + String.format("%.5f", duration) + "s");
         return false;
     }
-
-    public static byte[] createDataPacket(File file, int sessionNumber, int packetNumber, byte[] data, long crc32Long) {
-        ByteBuffer packetDataBuffer = null;
-
-        packetDataBuffer = packetDataBuffer.allocate(8+maxBytes);
-        packetDataBuffer.putInt(sessionNumber);
-        packetDataBuffer.putInt(packetNumber);
-        packetDataBuffer.put(data);
-        /*if(crc32Long != 0) {
-            packetDataBuffer.putLong(crc32Long);
-        }*/
-
-        return packetDataBuffer.array();
-    }
-
-    /*public static void sendDataPacket(DatagramSocket socket, byte[] dataPacket, InetAddress address, int port) {
-
-    }*/
 }

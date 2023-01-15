@@ -12,14 +12,15 @@ public class Server {
             System.exit(1);
         }
     
-        int port = 0, delay = 0, fileNameSizeInt = 0, receiveCrc32Int = 0, crc32Int = 0, ack = 0, sessionNumber = 0, packetNumber = 0, i = 0, receivedBytes = 0, sessionNumberData = 0, packetNumberData = 0;
+        int port = 0, delay = 0, fileNameSizeInt = 0, receiveCrc32Int = 0, crc32Int = 0, sessionNumber = 0, i = 0, receivedBytes = 0, sessionNumberData = 0, packetNumberData = 0;
+        byte packetNumber = (byte) 0, ack = (byte) 0;
         long fileSizeLong = 0;
         double lossrate = 0;
         String fileNameString;
         DatagramSocket serverSocket = null;
         InetAddress address = null;
         ByteBuffer byteBuffer = null, fileDataBuffer = null;
-        byte[] receiveData = new byte[1408], dataPacketByte = null, sessionNumberByte = new byte[2], startID = new byte[5], fileSize = new byte[8], fileNameSize = new byte[8], fileName = null, receiveCrc32 = new byte[8], packetNumberByte = new byte[4], returnData = new byte[3], sessionNumberDataByte = new byte[4], packetNumberDataByte = new byte[4], dataPacketByteClean = null, fileDataByte = null;
+        byte[] receiveData = new byte[1408], dataPacketByte = null, sessionNumberByte = new byte[2], startID = new byte[5], fileSize = new byte[8], fileNameSize = new byte[8], fileName = null, receiveCrc32 = new byte[8], packetNumberByte = new byte[4], returnData = new byte[4], sessionNumberDataByte = new byte[4], packetNumberDataByte = new byte[4], dataPacketByteClean = null, fileDataByte = null;
         CRC32 crc32 = null;
         File file = null;
         FileOutputStream fileOutputStream = null;
@@ -64,8 +65,9 @@ public class Server {
         System.out.println("Socket started on port \'" + port + "\'.");
 
         while(true) { 
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); 
-
+            ack = (byte) 0;
+            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+            
             try {
                 serverSocket.setSoTimeout(0);
                 serverSocket.receive(receivePacket);
@@ -87,7 +89,7 @@ public class Server {
 
             packetNumberByte = Arrays.copyOfRange(dataPacketByte, 4, 8);
             byteBuffer = ByteBuffer.wrap(packetNumberByte);
-            packetNumber = byteBuffer.getInt();
+            packetNumber = byteBuffer.get();
             if(packetNumber != ack) {
                 System.out.println("Packetnumber \'" + packetNumber + "\' of startpacket is not equal to expected ACK \'"+ ack + "\'.");
                 continue;
@@ -142,15 +144,21 @@ public class Server {
             }
             System.out.println("Returned start packet.");
 
-            //ack++;
-
             try {
                 serverSocket.setSoTimeout(1000);
             } catch(SocketException ex) {
                 System.out.println("Problem with socket.");
             }
 
+            fileDataByte = null;
+            receivedBytes = 0;
             while((receivedBytes < fileSizeLong) && (i < 10)) {
+                if(ack == (byte) 0) {
+                    ack = (byte) 1;
+                } else {
+                    ack = (byte) 0;
+                }
+
                 receivePacket = new DatagramPacket(receiveData, receiveData.length); 
 
                 System.out.println("Trying to receive data packet.");
@@ -158,13 +166,26 @@ public class Server {
                     serverSocket.receive(receivePacket);
                 } catch(SocketTimeoutException ex) {
                     System.out.println("Could not receive data in time.");
+                    if(ack == (byte) 0) {
+                        ack = (byte) 1;
+                    } else {
+                        ack = (byte) 0;
+                    }
+                    i++;
+                    continue;
                 } catch(IOException ex) {
                     System.out.println("Could not receive data.");
+                    if(ack == (byte) 0) {
+                        ack = (byte) 1;
+                    } else {
+                        ack = (byte) 0;
+                    }
+                    i++;
+                    continue;
                 } 
 
                 port = receivePacket.getPort();
                 address = receivePacket.getAddress();
-
 
                 dataPacketByte = new byte[receivePacket.getLength()];
                 dataPacketByte = Arrays.copyOfRange(receivePacket.getData(), 0, receivePacket.getLength());
@@ -173,11 +194,11 @@ public class Server {
                 byteBuffer = ByteBuffer.wrap(sessionNumberDataByte);
                 sessionNumberData = byteBuffer.getInt();
 
-                packetNumberDataByte = Arrays.copyOfRange(dataPacketByte, 4, 8);
-                byteBuffer = ByteBuffer.wrap(packetNumberDataByte);
-                packetNumberData = byteBuffer.getInt();
+                packetNumberByte = Arrays.copyOfRange(dataPacketByte, 4, 8);
+                byteBuffer = ByteBuffer.wrap(packetNumberByte);
+                packetNumber = byteBuffer.get();
 
-                System.out.println("Received start packet with sessionnumber \'" + sessionNumberData + "\' and packetnumber \'" + packetNumberData + "\'");
+                System.out.println("Received data packet with sessionnumber \'" + sessionNumberData + "\' and packetnumber \'" + packetNumber + "\'");
 
                 receiveData = new byte[dataPacketByte.length - 8];
                 receiveData = Arrays.copyOfRange(receivePacket.getData(), 8, receivePacket.getLength());
@@ -188,17 +209,41 @@ public class Server {
                     continue;
                 }
 
-                /*if(packetNumberData != ack) {
-                    // TODO
-                }*/
+                if(ack == (byte) 0) {
+                    ack = (byte) 1;
+                } else {
+                    ack = (byte) 0;
+                }
+
+                if(packetNumber != ack) {
+                    System.out.println("Wrong packetnumber, sending response.");
+                    returnData = new byte[4];
+                    returnData = Arrays.copyOfRange(dataPacketByte, 0, 8);
+                    returnPacket = new DatagramPacket(returnData, returnData.length, address, port);
+
+                    System.out.println("Trying to return response packet.");
+                    try {
+                        serverSocket.send(returnPacket);
+                    } catch(IOException ex) {
+                        System.out.println("Could not send data.");
+                        System.exit(1);
+                    }
+                    System.out.println("Returned response packet.");
+
+                    if(ack == (byte) 0) {
+                        ack = (byte) 1;
+                    } else {
+                        ack = (byte) 0;
+                    }
+                    i++;
+                    continue;
+                }
 
                 receivedBytes = receivedBytes + receiveData.length;
 
                 returnData = new byte[4];
                 returnData = Arrays.copyOfRange(dataPacketByte, 0, 4);
                 returnPacket = new DatagramPacket(returnData, returnData.length, address, port);
-
-                // TODO: Datei abspeichern
 
                 if(receivedBytes < (int) fileSizeLong) {
                     fileDataBuffer = ByteBuffer.allocate(receivedBytes);
@@ -214,19 +259,17 @@ public class Server {
                     }
                     System.out.println("Returned data packet.");
                 } else {
-                    System.out.println("test");
-
                     dataPacketByteClean = new byte[receiveData.length - 8];
                     dataPacketByteClean = Arrays.copyOfRange(receiveData, 0, receiveData.length - 8);
 
-                    fileDataBuffer = ByteBuffer.allocate(receivedBytes-8);
+                    fileDataBuffer = ByteBuffer.allocate(receivedBytes - 8);
                     fileDataBuffer.put(dataPacketByteClean);
                     fileDataByte = fileDataBuffer.array();
 
                     crc32 = new CRC32();
                     crc32.update(fileDataByte);
-                    
-                    receiveCrc32 = Arrays.copyOfRange(receiveData, receiveData.length-8, receiveData.length);
+
+                    receiveCrc32 = Arrays.copyOfRange(receiveData, receiveData.length - 8, receiveData.length);
                     byteBuffer = ByteBuffer.wrap(receiveCrc32);
                     receiveCrc32Int = (int) byteBuffer.getLong();
 
@@ -269,6 +312,11 @@ public class Server {
                     System.out.println("Returned data packet.");
 
                     break;
+                }
+
+                if(i == 10) {
+                    System.out.println("Too many tries, could not receive packet.");
+                    continue;
                 }
             }
         }

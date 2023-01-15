@@ -11,13 +11,13 @@ public class Server {
             System.exit(1);
         }
     
-        int port = 0, delay = 0, fileNameSizeInt = 0, receiveCrc32Int = 0, crc32Int = 0, ack = 0, packetNumber = 0, i = 0, receivedBytes = 0;
+        int port = 0, delay = 0, fileNameSizeInt = 0, receiveCrc32Int = 0, crc32Int = 0, ack = 0, sessionNumber = 0, packetNumber = 0, i = 0, receivedBytes = 0, sessionNumberData = 0, packetNumberData = 0;
         long fileSizeLong = 0;
         double lossrate = 0;
         DatagramSocket serverSocket = null;
         InetAddress address = null;
-        ByteBuffer byteBuffer = null;
-        byte[] receiveData = new byte[1408], dataPacketByte = null, sessionNumberByte = new byte[2], startID = new byte[5], fileSize = new byte[8], fileNameSize = new byte[8], fileName = null, receiveCrc32 = new byte[8], packetNumberByte = new byte[4], returnData = new byte[3];
+        ByteBuffer byteBuffer = null, fileDataBuffer = null;
+        byte[] receiveData = new byte[1408], dataPacketByte = null, sessionNumberByte = new byte[2], startID = new byte[5], fileSize = new byte[8], fileNameSize = new byte[8], fileName = null, receiveCrc32 = new byte[8], packetNumberByte = new byte[4], returnData = new byte[3], sessionNumberDataByte = new byte[4], packetNumberDataByte = new byte[4];
         CRC32 crc32 = null;
     
         try {
@@ -54,13 +54,14 @@ public class Server {
         try {
             serverSocket = new DatagramSocket(port);
         } catch(SocketException ex) {
-            System.out.println("Could not open socket.");
+            System.out.println("Could not open socket on port \'" + port + "\'.");
+            System.exit(1);
         }
+        System.out.println("Socket started on port \'" + port + "\'.");
 
         while(true) { 
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); 
 
-            System.out.println("Trying to receive start packet.");
             try {
                 serverSocket.setSoTimeout(0);
                 serverSocket.receive(receivePacket);
@@ -75,7 +76,10 @@ public class Server {
             address = receivePacket.getAddress();
 
             dataPacketByte = Arrays.copyOfRange(receivePacket.getData(), 0, receivePacket.getLength());
+
             sessionNumberByte = Arrays.copyOfRange(dataPacketByte, 0, 4);
+            byteBuffer = ByteBuffer.wrap(sessionNumberByte);
+            sessionNumber = byteBuffer.getInt();
 
             packetNumberByte = Arrays.copyOfRange(dataPacketByte, 4, 8);
             byteBuffer = ByteBuffer.wrap(packetNumberByte);
@@ -84,6 +88,8 @@ public class Server {
                 System.out.println("Packetnumber \'" + packetNumber + "\' of startpacket is not equal to expected ACK \'"+ ack + "\'.");
                 continue;
             }
+
+            System.out.println("Received start packet with sessionnumber \'" + sessionNumber+ "\' and packetnumber \'" + packetNumber+ "\'.");
 
             startID = Arrays.copyOfRange(dataPacketByte, 8, 13);
             try {
@@ -132,16 +138,16 @@ public class Server {
             }
             System.out.println("Returned start packet.");
 
+            //ack++;
+
             try {
                 serverSocket.setSoTimeout(1000);
             } catch(SocketException ex) {
                 System.out.println("Problem with socket.");
             }
 
-            System.out.println(fileSizeLong);
-
             while((receivedBytes < fileSizeLong) && (i < 10)) {
-                receivePacket = new DatagramPacket(receiveData, receiveData.length);
+                receivePacket = new DatagramPacket(receiveData, receiveData.length); 
 
                 System.out.println("Trying to receive data packet.");
                 try {
@@ -155,15 +161,68 @@ public class Server {
                 port = receivePacket.getPort();
                 address = receivePacket.getAddress();
 
+                System.out.println("X6");
+
+                dataPacketByte = new byte[receivePacket.getLength()];
                 dataPacketByte = Arrays.copyOfRange(receivePacket.getData(), 0, receivePacket.getLength());
-                
-                sessionNumberByte = Arrays.copyOfRange(dataPacketByte, 0, 4);
 
-                packetNumberByte = Arrays.copyOfRange(dataPacketByte, 4, 8);
-                byteBuffer = ByteBuffer.wrap(packetNumberByte);
-                packetNumber = byteBuffer.getInt();
+                System.out.println("X5");
+           
+                sessionNumberDataByte = Arrays.copyOfRange(dataPacketByte, 0, 4);
+                byteBuffer = ByteBuffer.wrap(sessionNumberDataByte);
+                sessionNumberData = byteBuffer.getInt();
 
-                
+                System.out.println("X3");
+                System.out.println(sessionNumberData);
+
+                packetNumberDataByte = Arrays.copyOfRange(dataPacketByte, 4, 8);
+                byteBuffer = ByteBuffer.wrap(packetNumberDataByte);
+                packetNumberData = byteBuffer.getInt();
+
+                System.out.println("X2");
+
+                System.out.println("Received start packet with sessionnumber \'" + sessionNumberData + "\' and packetnumber \'" + packetNumberData + "\'");
+
+                receiveData = new byte[dataPacketByte.length - 8];
+                receiveData = Arrays.copyOfRange(receivePacket.getData(), 8, receivePacket.getLength());
+
+                System.out.println("X1");
+
+                if(!Arrays.equals(sessionNumberDataByte, sessionNumberByte)) {
+                    System.out.println("Sessionnumbers do not equal.");
+                    i++;
+                    continue;
+                }
+
+                /*if(packetNumberData != ack) {
+                    // TODO
+                }*/
+
+                receivedBytes = receivedBytes + receiveData.length;
+
+                returnData = new byte[4];
+                returnData = Arrays.copyOfRange(dataPacketByte, 0, 4);
+                returnPacket = new DatagramPacket(returnData, returnData.length, address, port);
+
+                // TODO: Datei abspeichern
+
+
+                if(receivedBytes < (int) fileSizeLong) {
+                    fileDataBuffer = ByteBuffer.allocate(receivedBytes);
+                    fileDataBuffer.put(receiveData);
+                    receivedBytes = receivedBytes.array();
+
+                    System.out.println("Trying to return data packet.");
+                    try {
+                        serverSocket.send(returnPacket);
+                    } catch(IOException ex) {
+                        System.out.println("Could not send data.");
+                        System.exit(1);
+                    }
+                    System.out.println("Returned data packet.");
+                } else {
+                    System.out.println("test");
+                }
             }
         }
     }
